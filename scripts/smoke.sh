@@ -4,8 +4,8 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 LOG=${TMPDIR:-/tmp}
-uv run --directory backend uvicorn app.main:app --port 8000 >"$LOG/smoke-backend.log" 2>&1 & B=$!
-npm --prefix frontend exec -- next start -p 3000 >"$LOG/smoke-frontend.log" 2>&1 & F=$!
+(cd backend && exec uv run uvicorn app.main:app --port 8000) >"$LOG/smoke-backend.log" 2>&1 & B=$!
+(cd frontend && exec npx next start -p 3000) >"$LOG/smoke-frontend.log" 2>&1 & F=$!
 cleanup() { kill $B $F 2>/dev/null || true; pkill -f "uvicorn app.main:app --port 8000" 2>/dev/null || true; pkill -f "next start -p 3000" 2>/dev/null || true; }
 fail() { echo "smoke FAILED: $1"; tail -30 "$LOG"/smoke-*.log; exit 1; }
 trap cleanup EXIT
