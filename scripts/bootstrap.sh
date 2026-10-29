@@ -18,7 +18,8 @@ step() { printf '\n\033[1m==> %s\033[0m\n' "$*"; }
 
 step "1/6 repo $REPO from template"
 if gh repo view "$REPO" >/dev/null 2>&1; then echo "exists, reusing"
-else gh repo create "$REPO" --public --template "$TEMPLATE" --clone; fi
+else gh repo create "$REPO" --public --template "$TEMPLATE"; sleep 3; fi
+[ -d "$NAME/.git" ] || gh repo clone "$REPO" "$NAME" -- -q
 
 step "2/6 collaborators: ${*:-none}"
 for u in "$@"; do gh api -X PUT "repos/$REPO/collaborators/$u" -f permission=push >/dev/null && echo "invited $u"; done
@@ -72,26 +73,35 @@ fi
 step "6/6 Vercel: two projects (frontend, backend) wired to $REPO"
 TOKEN=$(python3 -c "import json,os;print(json.load(open(os.path.expanduser('~/Library/Application Support/com.vercel.cli/auth.json')))['token'])")
 vapi() { curl -sS -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' "$@"; }
-mkproj() { # name rootDir framework
+mkproj() { # name rootDir framework — reuses the project on re-run, aborts on any other error
   vapi -X POST https://api.vercel.com/v11/projects -d "{\"name\":\"$1\",\"rootDirectory\":\"$2\",\"framework\":$3,
-    \"gitRepository\":{\"type\":\"github\",\"repo\":\"$REPO\"}}" | python3 -c "import json,sys;d=json.load(sys.stdin);print(d.get('id') or d)"
+    \"gitRepository\":{\"type\":\"github\",\"repo\":\"$REPO\"}}" | python3 -c "
+import json,sys;d=json.load(sys.stdin);e=d.get('error',{})
+if d.get('id'): print('created', d['name'])
+elif e.get('code')=='conflict': print('exists, reusing $1')
+else: sys.exit(f'Vercel error: {e} — is the Vercel GitHub app allowed on this repo? (vercel.com → Settings → Git)')"
 }
 low=$(echo "$NAME" | tr '[:upper:]' '[:lower:]')
 mkproj "$low-api" backend '"fastapi"'
 mkproj "$low-web" frontend '"nextjs"'
-BACKEND_URL="https://$low-api.vercel.app"
-vapi -X POST "https://api.vercel.com/v10/projects/$low-web/env?upsert=true" \
+# real production domain (the obvious *.vercel.app name may be taken by someone else)
+BACKEND_URL="https://$(vapi "https://api.vercel.com/v9/projects/$low-api/domains" | python3 -c "
+import json,sys;ds=[d['name'] for d in json.load(sys.stdin)['domains'] if d['name'].endswith('.vercel.app')];print(ds[0])")"
+WEB_URL="https://$(vapi "https://api.vercel.com/v9/projects/$low-web/domains" | python3 -c "
+import json,sys;ds=[d['name'] for d in json.load(sys.stdin)['domains'] if d['name'].endswith('.vercel.app')];print(ds[0])")"
+vapi -f -X POST "https://api.vercel.com/v10/projects/$low-web/env?upsert=true" \
   -d "{\"key\":\"BACKEND_URL\",\"value\":\"$BACKEND_URL\",\"type\":\"plain\",\"target\":[\"production\",\"preview\",\"development\"]}" >/dev/null
 # first deploys: an empty commit to main triggers both projects via git integration
-git -C "$NAME" commit --allow-empty -qm "chore: trigger first deploy" 2>/dev/null && git -C "$NAME" push -q 2>/dev/null \
-  || gh api -X POST "repos/$REPO/dispatches" -f event_type=noop >/dev/null || true
+git -C "$NAME" commit --allow-empty -qm "chore: trigger first deploy" && git -C "$NAME" push -q
 
 cat <<DONE
 
 ✅ Done.
    Repo:     https://github.com/$REPO
-   Frontend: https://$low-web.vercel.app   (deploys on every merge to main, previews on PRs)
+   Frontend: $WEB_URL   (deploys on every merge to main, previews on PRs)
    Backend:  $BACKEND_URL/api/health
    Next:     cd $(pwd)/$NAME && make setup && make dev
              fill in the pinned 🎯 issue together, then split it into Task issues.
+             paste into the README top: Live: $WEB_URL · API: $BACKEND_URL/docs · Chat: <slack>
+             API keys: add them to the $low-api Vercel project (Settings → Environment Variables).
 DONE

@@ -1,12 +1,15 @@
 #!/usr/bin/env bash
-# Boots backend + built frontend, checks the frontend's /api proxy reaches the backend.
+# Boots backend + built frontend, checks the page loads and the frontend's /api proxy reaches the backend.
+# Deliberately checks only /api/health and `/` so it survives the team replacing the example code.
 set -euo pipefail
 cd "$(dirname "$0")/.."
-(cd backend && uv run uvicorn app.main:app --port 8000 >/tmp/smoke-backend.log 2>&1) &
-(cd frontend && npx next start -p 3000 >/tmp/smoke-frontend.log 2>&1) &
-trap 'kill $(jobs -p) 2>/dev/null || true' EXIT
+LOG=${TMPDIR:-/tmp}
+uv run --directory backend uvicorn app.main:app --port 8000 >"$LOG/smoke-backend.log" 2>&1 & B=$!
+npm --prefix frontend exec -- next start -p 3000 >"$LOG/smoke-frontend.log" 2>&1 & F=$!
+cleanup() { kill $B $F 2>/dev/null || true; pkill -f "uvicorn app.main:app --port 8000" 2>/dev/null || true; pkill -f "next start -p 3000" 2>/dev/null || true; }
+fail() { echo "smoke FAILED: $1"; tail -30 "$LOG"/smoke-*.log; exit 1; }
+trap cleanup EXIT
 for _ in $(seq 30); do curl -sf localhost:3000/api/health >/dev/null && break; sleep 1; done
-curl -sf localhost:3000/api/health | grep -q '"ok"'
-curl -sf localhost:3000/api/items | grep -q '"title"'
-curl -sf localhost:3000/ | grep -q 'baselhack26'
+curl -sf localhost:3000/api/health | grep -q '"ok"' || fail "/api/health through the frontend proxy"
+curl -sf -o /dev/null localhost:3000/ || fail "frontend page /"
 echo "smoke OK"
