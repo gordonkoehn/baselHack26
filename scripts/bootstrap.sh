@@ -11,6 +11,9 @@ NAME="${1:?usage: bootstrap.sh <repo-name> [github-handle ...]}"; shift
 OWNER="$(gh api user -q .login)"
 REPO="$OWNER/$NAME"
 
+# clone next to the template checkout, not inside it
+cd "$(dirname "$0")/../.."
+
 step() { printf '\n\033[1m==> %s\033[0m\n' "$*"; }
 
 step "1/6 repo $REPO from template"
@@ -19,6 +22,7 @@ else gh repo create "$REPO" --public --template "$TEMPLATE" --clone; fi
 
 step "2/6 collaborators: ${*:-none}"
 for u in "$@"; do gh api -X PUT "repos/$REPO/collaborators/$u" -f permission=push >/dev/null && echo "invited $u"; done
+[ $# -gt 0 ] && echo "→ they must accept: https://github.com/$REPO/invitations (or the email from GitHub)"
 
 step "3/6 repo settings: squash-only, auto-delete branches, auto-merge"
 gh api -X PATCH "repos/$REPO" -F allow_squash_merge=true -F allow_merge_commit=false -F allow_rebase_merge=false \
@@ -88,6 +92,6 @@ cat <<DONE
    Repo:     https://github.com/$REPO
    Frontend: https://$low-web.vercel.app   (deploys on every merge to main, previews on PRs)
    Backend:  $BACKEND_URL/api/health
-   Next:     cd $NAME && make setup && make dev
+   Next:     cd $(pwd)/$NAME && make setup && make dev
              fill in the pinned 🎯 issue together, then split it into Task issues.
 DONE

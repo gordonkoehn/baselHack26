@@ -3,7 +3,8 @@
 ## 0. Before (done Thu)
 - This repo is a GitHub **template**: generic boilerplate only (≈ `create-next-app` + FastAPI hello world), no challenge code.
 - Rules check (baselhack.ch, 29 Oct): nothing published on open source, pre-existing code, AI tools or judging. IP stays with the team.
-  Hacking starts Fri 20:30, hands off Sun 12:00, pitches Sun 13:00. **Ask at the opening / on Discord:** "We have a generic empty starter template, OK?" Mention it in the pitch.
+  Hacking starts Fri 20:30, hands off Sun 12:00, pitches Sun 13:00.
+  From experience (previous BaselHack): repos were public, and boilerplate was fine as long as the team repo's first commit happens on site. `bootstrap.sh` does exactly that. Still confirm at the opening or on Discord.
 
 ## 1. Friday 19:45–20:30 — team + scope (no laptops)
 1. Names, strengths, GitHub handles. Assign roles **by strength, not by layer**.
@@ -16,7 +17,9 @@ cd ~/Workspace/repos/gordonkoehn
 ./baselHack26/scripts/bootstrap.sh <team-repo-name> handle1 handle2 handle3
 ```
 It creates the repo from the template, invites the team, sets up a CI-gated main (no human reviews, Copilot advisory), labels, a pinned **🎯 Scope & demo** issue, and two Vercel projects with auto-deploy.
+Collect GitHub handles at the team table (a sticky note will do). The script invites them; **they must accept** (GitHub email/notification, or `github.com/<you>/<repo>/invitations`).
 Teammates: accept the invite → `git clone` → `make setup && make dev`.
+In parallel, someone creates the **Slack workspace**: `#general`, `#ci` (GitHub app: `/github subscribe <you>/<repo> pulls commits:main workflows`), `#random`. Pin the deployed URL.
 
 ## 3. First hour
 - Integrator: replace the `Item` example with the real contract (schema + both mirrors), merge it **first**. Everyone builds against it.
@@ -30,8 +33,9 @@ Teammates: accept the invite → `git clone` → `make setup && make dev`.
 |---|---|
 | Check-ins | 5 min, standing, at fixed times: **Fri 22:30 · Sat 09:30 · 13:00 · 17:00 · 21:00 · Sun 09:00 · 11:00**. Not hourly, it kills flow. |
 | Check-in format | Open the **deployed** URL and click the demo. Then each person: done / next issue / blocked. Re-cut scope there, not in between. |
-| Between check-ins | Async in the team chat + issues. `blocked` label = ping the integrator now, don't wait. |
-| Issues | One issue = one owner = one branch = one PR. WIP limit **1** per person. PR body `Closes #n`. Labels: frontend/backend/contract/blocked/demo/stretch. |
+| Between check-ins | Async in Slack + issues. `blocked` label = ping the integrator now, don't wait. |
+| Issues | One issue = one owner. Assign yourself before starting, so nobody doubles up. Labels: frontend/backend/contract/blocked/demo/stretch. |
+| PRs | Many small PRs per issue are better than one big one (aim for < 200 lines). Stacking is fine: branch B on branch A, and B's PR base = A. When A merges, GitHub retargets B to main; if squash conflicts, `git rebase --onto main A B`. Keep stacks ≤ 3 deep. The last PR says `Closes #n`. |
 | Merging | PR → CI green → squash-merge yourself (or `gh pr merge --auto --squash`). Copilot comments are advisory. Merge within the hour. |
 | Contract changes | Only via a `contract`-labelled PR touching schema + both mirrors. Announce in chat. |
 
