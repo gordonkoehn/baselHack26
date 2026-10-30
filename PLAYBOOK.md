@@ -19,7 +19,8 @@ cd ~/Workspace/repos/gordonkoehn
 It creates the repo from the template, invites the team, sets up a CI-gated main (no human reviews, Copilot advisory), labels, a pinned **🎯 Scope & demo** issue, and two Vercel projects with auto-deploy.
 Collect GitHub handles at the team table (a sticky note will do). The script invites them; **they must accept** (GitHub email/notification, or `github.com/<you>/<repo>/invitations`).
 Teammates: accept the invite → `git clone` → `make setup && make dev`.
-In parallel, someone creates the **Slack workspace**: `#general`, `#ci` (GitHub app: `/github subscribe <you>/<repo> pulls commits:main workflows`), `#random`. Pin the deployed URL.
+Team chat is **Discord**: `#general`, `#ci`, `#random`. Share the invite at the table and pin the deployed URL.
+For the `#ci` feed: channel settings → Integrations → Webhooks → copy URL, then run bootstrap with `DISCORD_WEBHOOK=<url> ./baselHack26/scripts/bootstrap.sh …` (the URL is a secret, don't commit it).
 
 ## 3. First hour
 - Integrator: replace the `Item` example with the real contract (schema + both mirrors), merge it **first**. Everyone builds against it.
@@ -33,7 +34,7 @@ In parallel, someone creates the **Slack workspace**: `#general`, `#ci` (GitHub 
 |---|---|
 | Check-ins | 5 min, standing, at fixed times: **Fri 22:30 · Sat 09:30 · 13:00 · 17:00 · 21:00 · Sun 09:00 · 11:00**. Not hourly, it kills flow. |
 | Check-in format | Open the **deployed** URL and click the demo. Then each person: done / next issue / blocked. Re-cut scope there, not in between. |
-| Between check-ins | Async in Slack + issues. `blocked` label = ping the integrator now, don't wait. |
+| Between check-ins | Async in Discord + issues. `blocked` label = ping the integrator now, don't wait. |
 | Issues | One issue = one owner. Assign yourself before starting, so nobody doubles up. Labels: frontend/backend/contract/blocked/demo/stretch. |
 | PRs | Many small PRs per issue are better than one big one (aim for < 200 lines). Stacking is fine: branch B on branch A, and B's PR base = A. When A merges, GitHub retargets B to main; if squash conflicts, `git rebase --onto main A B`. Keep stacks ≤ 3 deep. The last PR says `Closes #n`. |
 | Merging | PR → CI green → squash-merge yourself (or `gh pr merge --auto --squash`). Copilot comments are advisory. Merge within the hour. |

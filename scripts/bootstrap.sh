@@ -3,6 +3,8 @@
 #
 #   ./scripts/bootstrap.sh <repo-name> [github-handle ...]
 #
+# Optional: DISCORD_WEBHOOK=<channel webhook url> posts pushes, PRs and issues to that channel.
+#
 # Needs: gh (logged in), vercel CLI (logged in), python3. Vercel GitHub app must have access to the new repo
 # (Vercel dashboard → Settings → Git, "All repositories" is easiest).
 set -euo pipefail
@@ -70,6 +72,14 @@ MD
   gh issue pin "$url" -R "$REPO" >/dev/null; echo "pinned $url"
 fi
 
+if [ -n "${DISCORD_WEBHOOK:-}" ]; then
+  gh api "repos/$REPO/hooks" -q '.[].config.url' | grep -q 'discord.com' || gh api -X POST "repos/$REPO/hooks" --input - >/dev/null <<JSON
+{ "name": "web", "active": true, "events": ["push", "pull_request", "issues"],
+  "config": { "url": "${DISCORD_WEBHOOK%/}/github", "content_type": "json" } }
+JSON
+  echo "Discord feed connected"
+fi
+
 step "6/6 Vercel: two projects (frontend, backend) wired to $REPO"
 TOKEN=$(python3 -c "import json,os;print(json.load(open(os.path.expanduser('~/Library/Application Support/com.vercel.cli/auth.json')))['token'])")
 vapi() { curl -sS -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' "$@"; }
@@ -102,6 +112,6 @@ cat <<DONE
    Backend:  $BACKEND_URL/api/health
    Next:     cd $(pwd)/$NAME && make setup && make dev
              fill in the pinned 🎯 issue together, then split it into Task issues.
-             paste into the README top: Live: $WEB_URL · API: $BACKEND_URL/docs · Chat: <slack>
+             paste into the README top: Live: $WEB_URL · API: $BACKEND_URL/docs · Chat: <discord>
              API keys: add them to the $low-api Vercel project (Settings → Environment Variables).
 DONE
